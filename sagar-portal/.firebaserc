@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "sagar-anna-bhandar"
+  },
+  "targets": {
+    "sagar-anna-bhandar": {
+      "hosting": {
+        "sagar-portal": [
+          "sagar-portal"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

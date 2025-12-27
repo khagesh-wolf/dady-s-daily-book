@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Portal - Sagar Anna Bhandar</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #60a5fa;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --light: #f8fafc;
+            --dark: #1f2937;
+            --gray: #6b7280;
+            --gray-light: #9ca3af;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        header {
+            background-color: white;
+            color: var(--dark);
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+
+        .logo h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+        }
+
+        .btn-secondary:hover {
+            background-color: #059669;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .main-content {
+            padding: 40px 0;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin-bottom: 24px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .login-card {
+            max-width: 440px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: var(--dark);
+            margin-bottom: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .card p {
+            color: var(--gray);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background-color: white;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .dashboard {
+            display: none;
+        }
+
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-section h1 {
+            font-size: 1.75rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .welcome-section p {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 0;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .stat-card h3 {
+            font-size: 1.75rem;
+            color: var(--dark);
+            margin: 8px 0;
+            font-weight: 700;
+        }
+
+        .stat-card p {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .section-title {
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .transaction-details {
+            margin-top: 24px;
+        }
+
+        .transaction-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s;
+        }
+
+        .transaction-item:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .transaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .transaction-type {
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .transaction-amount {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .transaction-date {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .transaction-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+        }
+
+        .info-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .no-transactions {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--gray);
+        }
+
+        .no-transactions i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            color: #d1d5db;
+        }
+
+        .no-transactions h3 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+            color: var(--gray);
+        }
+
+        footer {
+            background-color: var(--dark);
+            color: white;
+            text-align: center;
+            padding: 24px 0;
+            margin-top: 48px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 24px;
+            color: var(--gray);
+        }
+
+        .error-message {
+            background-color: #fef2f2;
+            color: var(--danger);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #fecaca;
+            display: none;
+        }
+
+        .success-message {
+            background-color: #f0fdf4;
+            color: var(--secondary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #bbf7d0;
+            display: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-primary {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .text-success {
+            color: #16a34a;
+        }
+
+        .text-warning {
+            color: #d97706;
+        }
+
+        .text-danger {
+            color: #dc2626;
+        }
+
+        .text-primary {
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+            
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .transaction-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .auth-section {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .container {
+                padding: 0 12px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="/logo.png" alt="Sagar Anna Bhandar Logo">
+                    <h1>Sagar Anna Bhandar</h1>
+                </div>
+                <div class="auth-section" id="authSection">
+                    <span class="customer-name" id="customerName"></span>
+                    <button class="btn btn-outline" id="logoutBtn" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="main-content">
+            <!-- Login Section -->
+            <div class="card login-card" id="loginSection">
+                <div class="card-icon">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <h2>Customer Portal</h2>
+                <p>Enter your phone number to view your transaction history and account details</p>
+                
+                <div class="error-message" id="errorMessage"></div>
+                <div class="success-message" id="successMessage"></div>
+                
+                <form id="phoneLoginForm">
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number</label>
+                        <input type="tel" id="phoneNumber" class="form-control" placeholder="Enter your 10-digit phone number" required maxlength="10">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <span id="loginBtnText">View My Account</span>
+                        <div class="spinner" id="loginSpinner" style="display: none;"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div class="dashboard" id="dashboardSection">
+                <div class="welcome-section">
+                    <h1>Welcome, <span id="welcomeCustomerName"></span>!</h1>
+                    <p>Here's your transaction history and account summary</p>
+                </div>
+
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <i class="fas fa-exchange-alt"></i>
+                        <h3 id="totalTransactions">0</h3>
+                        <p>Total Transactions</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <h3 id="totalAmount">₹0</h3>
+                        <p>Total Amount</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <h3 id="pendingDues">₹0</h3>
+                        <p>Pending Dues</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-calendar-check"></i>
+                        <h3 id="lastTransaction">-</h3>
+                        <p>Last Transaction</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="section-title">Your Transactions</h2>
+                    <div id="transactionsList">
+                        <div class="loading" id="transactionsLoading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading transactions...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Sagar Anna Bhandar. Customer Portal - View your account details anytime.</p>
+        </div>
+    </footer>
+
+    <!-- Font Awesome for icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <script>
+        // Firebase configuration - Using your actual config
+        const firebaseConfig = {
+            apiKey: "AIzaSyC3T3iLAUkd3PCgbTz5IyxOUY4mqTwoU9A",
+            authDomain: "sagar-anna-bhandar.firebaseapp.com",
+            projectId: "sagar-anna-bhandar",
+            storageBucket: "sagar-anna-bhandar.firebasestorage.app",
+            messagingSenderId: "246586356567",
+            appId: "1:246586356567:web:3d531d7a678fa65c958412"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // DOM Elements
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const phoneLoginForm = document.getElementById('phoneLoginForm');
+        const phoneNumberInput = document.getElementById('phoneNumber');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginBtnText = document.getElementById('loginBtnText');
+        const loginSpinner = document.getElementById('loginSpinner');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const customerName = document.getElementById('customerName');
+        const welcomeCustomerName = document.getElementById('welcomeCustomerName');
+        const transactionsList = document.getElementById('transactionsList');
+        const transactionsLoading = document.getElementById('transactionsLoading');
+        
+        // Stats elements
+        const totalTransactions = document.getElementById('totalTransactions');
+        const totalAmount = document.getElementById('totalAmount');
+        const pendingDues = document.getElementById('pendingDues');
+        const lastTransaction = document.getElementById('lastTransaction');
+
+        // Check if user is already logged in (from session storage)
+        function checkExistingSession() {
+            const customerPhone = sessionStorage.getItem('customerPhone');
+            const customerData = sessionStorage.getItem('customerData');
+            
+            if (customerPhone && customerData) {
+                try {
+                    const customer = JSON.parse(customerData);
+                    showDashboard();
+                    loadCustomerData(customerPhone, customer);
+                } catch (e) {
+                    console.error('Error parsing stored customer data:', e);
+                    sessionStorage.clear();
+                }
+            }
+        }
+
+        // Phone number login
+        phoneLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const phoneNumber = phoneNumberInput.value.trim();
+            
+            if (!phoneNumber || phoneNumber.length !== 10) {
+                showError('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            try {
+                setLoadingState(true);
+                hideMessages();
+                
+                // Check if customer exists in database
+                const customerQuery = await db.collection('customers')
+                    .where('phone', '==', phoneNumber)
+                    .where('isDeleted', '!=', true)
+                    .get();
+                
+                if (customerQuery.empty) {
+                    showError('No account found with this phone number');
+                    setLoadingState(false);
+                    return;
+                }
+                
+                const customerDoc = customerQuery.docs[0];
+                const customerData = customerDoc.data();
+                
+                // Store in session storage
+                sessionStorage.setItem('customerPhone', phoneNumber);
+                sessionStorage.setItem('customerData', JSON.stringify({
+                    id: customerDoc.id,
+                    ...customerData
+                }));
+                
+                // Show dashboard
+                showDashboard();
+                loadCustomerData(phoneNumber, { id: customerDoc.id, ...customerData });
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('An error occurred. Please try again.');
+            } finally {
+                setLoadingState(false);
+            }
+        });
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('customerPhone');
+            sessionStorage.removeItem('customerData');
+            showLogin();
+            showSuccess('You have been logged out successfully.');
+        });
+
+        function showLogin() {
+            loginSection.style.display = 'block';
+            dashboardSection.style.display = 'none';
+            logoutBtn.style.display = 'none';
+            customerName.textContent = '';
+            phoneNumberInput.value = '';
+            hideMessages();
+        }
+
+        function showDashboard() {
+            loginSection.style.display = 'none';
+            dashboardSection.style.display = 'block';
+            logoutBtn.style.display = 'inline-flex';
+        }
+
+        async function loadCustomerData(phoneNumber, customerData) {
+            try {
+                transactionsLoading.style.display = 'block';
+                transactionsList.innerHTML = '<div class="loading" id="transactionsLoading"><i class="fas fa-spinner fa-spin"></i> Loading transactions...</div>';
+                
+                // Update customer name
+                if (customerData.name) {
+                    customerName.textContent = customerData.name;
+                    welcomeCustomerName.textContent = customerData.name;
+                }
+                
+                // Get transactions for this customer
+                const transactionsQuery = await db.collection('transactions')
+                    .where('customerId', '==', customerData.id)
+                    .orderBy('date', 'desc')
+                    .get();
+                
+                const transactionsData = transactionsQuery.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                displayTransactions(transactionsData, customerData);
+                updateStats(transactionsData, customerData);
+                
+            } catch (error) {
+                console.error('Error loading customer data:', error);
+                showError('Failed to load customer data');
+            } finally {
+                transactionsLoading.style.display = 'none';
+            }
+        }
+
+        function displayTransactions(transactions, customerData) {
+            if (transactions.length === 0) {
+                transactionsList.innerHTML = `
+                    <div class="no-transactions">
+                        <i class="fas fa-receipt"></i>
+                        <h3>No Transactions Found</h3>
+                        <p>You don't have any transactions yet.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let transactionsHTML = '';
+            
+            transactions.forEach(transaction => {
+                const date = transaction.date || 'Unknown date';
+                const formattedDate = formatDate(date);
+                
+                // Determine transaction type and styling based on your app's structure
+                let typeBadge = '';
+                let amountClass = 'text-primary';
+                
+                if (transaction.mainType === 'tractor') {
+                    typeBadge = '<span class="badge badge-primary">Tractor Service</span>';
+                    amountClass = 'text-primary';
+                } else if (transaction.mainType === 'crops') {
+                    if (transaction.type === 'crop_buy') {
+                        typeBadge = '<span class="badge badge-warning">Crop Purchase</span>';
+                        amountClass = 'text-warning';
+                    } else {
+                        typeBadge = '<span class="badge badge-success">Crop Sale</span>';
+                        amountClass = 'text-success';
+                    }
+                } else if (transaction.mainType === 'cash') {
+                    if (transaction.type === 'cash_taken') {
+                        typeBadge = '<span class="badge badge-danger">Cash Taken</span>';
+                        amountClass = 'text-danger';
+                    } else {
+                        typeBadge = '<span class="badge badge-success">Cash Given</span>';
+                        amountClass = 'text-success';
+                    }
+                } else {
+                    typeBadge = '<span class="badge badge-primary">Transaction</span>';
+                }
+                
+                // Determine payment status based on your dueAmount field
+                let paymentStatus = '';
+                const totalAmount = transaction.totalAmount || 0;
+                const paidAmount = transaction.amountPaid || 0;
+                const dueAmount = transaction.dueAmount || 0;
+                
+                if (dueAmount === 0) {
+                    paymentStatus = '<span class="badge badge-success">Paid</span>';
+                } else if (paidAmount > 0) {
+                    paymentStatus = `<span class="badge badge-warning">Partial (₹${paidAmount})</span>`;
+                } else {
+                    paymentStatus = '<span class="badge badge-danger">Due</span>';
+                }
+                
+                transactionsHTML += `
+                    <div class="transaction-item">
+                        <div class="transaction-header">
+                            <div class="transaction-type">
+                                ${typeBadge}
+                                <div class="transaction-date">${formattedDate}</div>
+                            </div>
+                            <div class="transaction-amount ${amountClass}">₹${formatCurrency(totalAmount)}</div>
+                        </div>
+                        <div class="transaction-details">
+                            <p class="info-value">${transaction.details || 'No description'}</p>
+                        </div>
+                        <div class="transaction-info">
+                            <div class="info-item">
+                                <span class="info-label">Payment Status:</span>
+                                <span class="info-value">${paymentStatus}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Balance:</span>
+                                <span class="info-value">₹${formatCurrency(Math.abs(dueAmount))}</span>
+                            </div>
+                            ${transaction.cropType ? `
+                            <div class="info-item">
+                                <span class="info-label">Crop Type:</span>
+                                <span class="info-value">${transaction.cropType}</span>
+                            </div>
+                            ` : ''}
+                            ${transaction.weight ? `
+                            <div class="info-item">
+                                <span class="info-label">Quantity:</span>
+                                <span class="info-value">${transaction.weight} kg</span>
+                            </div>
+                            ` : ''}
+                            ${transaction.serviceType ? `
+                            <div class="info-item">
+                                <span class="info-label">Service Type:</span>
+                                <span class="info-value">${formatServiceType(transaction.serviceType)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ${transaction.billPhotoBase64 ? `
+                        <div class="transaction-image" style="margin-top: 12px;">
+                            <img src="${transaction.billPhotoBase64}" alt="Bill" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            transactionsList.innerHTML = transactionsHTML;
+        }
+
+        function updateStats(transactions, customerData) {
+            // Update total transactions
+            totalTransactions.textContent = transactions.length;
+            
+            // Calculate totals
+            let totalAmountValue = 0;
+            let totalPendingDues = 0;
+            let lastTransactionDate = '-';
+            
+            transactions.forEach(transaction => {
+                const amount = transaction.totalAmount || 0;
+                const dueAmount = transaction.dueAmount || 0;
+                
+                totalAmountValue += amount;
+                
+                // For pending dues, we consider positive dueAmount as amount to collect
+                if (dueAmount > 0) {
+                    totalPendingDues += dueAmount;
+                }
+                
+                // Get the most recent transaction date
+                if (transaction.date && lastTransactionDate === '-') {
+                    lastTransactionDate = formatDate(transaction.date);
+                }
+            });
+            
+            totalAmount.textContent = `₹${formatCurrency(totalAmountValue)}`;
+            pendingDues.textContent = `₹${formatCurrency(totalPendingDues)}`;
+            lastTransaction.textContent = lastTransactionDate;
+        }
+
+        // Helper functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN').format(amount);
+        }
+
+        function formatDate(dateString) {
+            try {
+                // Handle both Nepali date strings and Firestore timestamps
+                if (dateString.includes('-')) {
+                    // Nepali date format YYYY-MM-DD
+                    const [year, month, day] = dateString.split('-');
+                    return `${day}/${month}/${year}`;
+                } else if (dateString.seconds) {
+                    // Firestore timestamp
+                    const date = new Date(dateString.seconds * 1000);
+                    return date.toLocaleDateString('en-IN');
+                } else {
+                    return dateString;
+                }
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        function formatServiceType(serviceType) {
+            const serviceMap = {
+                'rotavator': 'Rotavator',
+                'threser': 'Thresher',
+                'dhunga_trolley': 'Dhunga Trolley',
+                'gitti_trolley': 'Gitti Trolley',
+                'daura': 'Daura'
+            };
+            return serviceMap[serviceType] || serviceType;
+        }
+
+        function setLoadingState(isLoading) {
+            if (isLoading) {
+                loginBtn.disabled = true;
+                loginBtnText.textContent = 'Loading...';
+                loginSpinner.style.display = 'inline-block';
+            } else {
+                loginBtn.disabled = false;
+                loginBtnText.textContent = 'View My Account';
+                loginSpinner.style.display = 'none';
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        // Initialize the app
+        function initApp() {
+            checkExistingSession();
+        }
+
+        // Start the app when page loads
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
