@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { db } from '../firebaseConfig.js';
+import { db, auth } from '../firebaseConfig.js';
+import { signInAnonymously } from 'firebase/auth';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { User, Loader2, AlertCircle, Download, X } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage.jsx';
@@ -109,6 +110,9 @@ export default function PublicCustomerPage() {
       }
 
       try {
+        // Sign in anonymously for Firebase security rules
+        await signInAnonymously(auth);
+        
         // Find the customer with this secret accessKey
         const customerQuery = query(
           collection(db, "customers"), 
