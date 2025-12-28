@@ -104,13 +104,20 @@ export default function PinLock({ mode, onUnlock, onCancel, title }) {
           // Compare with legacy plain-text PIN
           isValid = pin === savedPinHash;
           if (isValid) {
-            // Migrate to hashed PIN
+            // Migrate to new PBKDF2 hashed PIN with random salt
             const newHash = await hashPin(pin);
             localStorage.setItem('app_pin_hash', newHash);
             localStorage.removeItem('app_pin');
           }
         } else if (savedPinHash) {
           isValid = await verifyPin(pin, savedPinHash);
+          // Check if we need to migrate from old SHA-256 format to PBKDF2
+          if (isValid && !savedPinHash.includes('$')) {
+            // Migrate to new PBKDF2 format
+            const newHash = await hashPin(pin);
+            localStorage.setItem('app_pin_hash', newHash);
+          }
+        }
         }
         
         if (isValid) {
