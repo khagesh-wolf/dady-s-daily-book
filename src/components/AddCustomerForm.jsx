@@ -21,8 +21,29 @@ export default function AddCustomerForm({ onSave, onCancel, initialData }) {
 
   const handleSubmit = () => {
     const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedAddress = address.trim();
+    
+    // Input validation with length limits
     if (!trimmedName) {
       alert('Please enter a customer name.');
+      return;
+    }
+    if (trimmedName.length > 100) {
+      alert('Customer name must be less than 100 characters.');
+      return;
+    }
+    if (trimmedPhone && trimmedPhone.length > 20) {
+      alert('Phone number must be less than 20 characters.');
+      return;
+    }
+    // Phone format validation - allow only digits, +, -, spaces, parentheses
+    if (trimmedPhone && !/^[0-9+\-\s()]*$/.test(trimmedPhone)) {
+      alert('Phone number contains invalid characters.');
+      return;
+    }
+    if (trimmedAddress && trimmedAddress.length > 200) {
+      alert('Address must be less than 200 characters.');
       return;
     }
 
@@ -32,9 +53,9 @@ export default function AddCustomerForm({ onSave, onCancel, initialData }) {
     onSave({
       id: initialData?.id,
       name: trimmedName,
-      phone: phone.trim(),
-      address: address.trim(),
-      accessKey: accessKey, // Add this line
+      phone: trimmedPhone,
+      address: trimmedAddress,
+      accessKey: accessKey,
     });
   };
 
@@ -59,6 +80,7 @@ export default function AddCustomerForm({ onSave, onCancel, initialData }) {
             onChange={(e) => setName(e.target.value)}
             className="mt-1 block w-full p-3 border border-gray-300 rounded-md"
             placeholder="e.g. Sitaram Chaudhary (Lamahi)"
+            maxLength={100}
           />
         </div>
         <div>
@@ -71,6 +93,7 @@ export default function AddCustomerForm({ onSave, onCancel, initialData }) {
             className="mt-1 block w-full p-3 border border-gray-300 rounded-md"
             placeholder={t('phone_optional')}
             inputMode="tel"
+            maxLength={20}
           />
         </div>
         <div>
@@ -82,6 +105,7 @@ export default function AddCustomerForm({ onSave, onCancel, initialData }) {
             onChange={(e) => setAddress(e.target.value)}
             className="mt-1 block w-full p-3 border border-gray-300 rounded-md"
             placeholder={t('address_optional')}
+            maxLength={200}
           />
         </div>
       </div>

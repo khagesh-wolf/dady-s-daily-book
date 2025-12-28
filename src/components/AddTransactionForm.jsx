@@ -80,6 +80,16 @@ useEffect(() => {
     if (isUploading) { alert("Please wait for the image to finish processing."); return; }
     if (!date) { alert('Please select a date for the transaction.'); return; }
     
+    // Input validation for numeric fields
+    const validateNumericRange = (value, fieldName, min = 0, max = 99999999) => {
+      const num = parseFloat(value);
+      if (value && (isNaN(num) || num < min || num > max)) {
+        alert(`${fieldName} must be a valid number between ${min} and ${max}.`);
+        return false;
+      }
+      return true;
+    };
+    
     let transactionData = { 
       id: initialData?.id,
       customerId: customer.id, 
@@ -89,11 +99,26 @@ useEffect(() => {
     };
 
     if (mainType === 'tractor') {
+      // Validate tractor inputs
+      if (!validateNumericRange(rate, 'Rate', 0, 99999999)) return;
+      if (!validateNumericRange(hours, 'Hours', 0, 999)) return;
+      if (!validateNumericRange(minutes, 'Minutes', 0, 59)) return;
+      if (!validateNumericRange(numTrolleys, 'Number of trolleys', 0, 999)) return;
+      if (!validateNumericRange(amountPaid, 'Amount paid', 0, 99999999)) return;
+      
       const paid = parseFloat(amountPaid) || 0;
       if (totalAmount <= 0) { alert('Please fill in the tractor details.'); return; }
       const dueAmount = parseFloat((totalAmount - paid).toFixed(1));
       transactionData = { ...transactionData, mainType, type: tractorService, details: `${tractorService} (Rate: ${rate})`, totalAmount, amountPaid: paid, dueAmount, rate, hours, minutes, numTrolleys };
     } else if (mainType === 'crops') {
+      // Validate crop inputs
+      if (!validateNumericRange(rate, 'Rate per kg', 0, 99999)) return;
+      if (!validateNumericRange(amountPaid, 'Amount paid', 0, 99999999)) return;
+      if (totalWeight < 0 || totalWeight > 9999999) {
+        alert('Weight must be a valid number between 0 and 9999999.');
+        return;
+      }
+      
       const paid = parseFloat(amountPaid) || 0;
       if (totalWeight <= 0) { alert('Please enter a weight.'); return; }
       if (totalAmount <= 0) { alert('Please fill in the crop details.'); return; }
@@ -114,11 +139,19 @@ useEffect(() => {
         rate 
       };
     } else if (mainType === 'cash') {
+      // Validate cash inputs
+      const trimmedDetails = cashDetails.trim();
+      if (trimmedDetails.length > 200) {
+        alert('Details must be less than 200 characters.');
+        return;
+      }
+      if (!validateNumericRange(cashAmount, 'Amount', 0, 99999999)) return;
+      
       const amt = parseFloat(cashAmount) || 0;
       if (amt <= 0) { alert('Please enter a cash amount.'); return; }
       let dueAmount = (cashType === 'cash_taken') ? -amt : amt;
       dueAmount = parseFloat(dueAmount.toFixed(1));
-      let details = cashDetails || (cashType === 'cash_taken' ? 'Cash Taken' : 'Cash Given');
+      let details = trimmedDetails || (cashType === 'cash_taken' ? 'Cash Taken' : 'Cash Given');
       transactionData = { ...transactionData, mainType, type: cashType, details, totalAmount: amt, amountPaid: amt, dueAmount };
     }
     
@@ -247,9 +280,9 @@ useEffect(() => {
       <div><label className="block text-sm font-medium text-gray-700">{t('cash_transaction')}</label><select value={cashType} onChange={(e) => setCashType(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 bg-white rounded-md"><option value="cash_taken">Cash Taken (पैसा लिएको)</option><option value="cash_given">Cash Given (पैसा दिएको)</option></select></div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Amount (Rs.)</label>
-        <input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md" placeholder="e.g. 5000" inputMode="decimal" />
+        <input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md" placeholder="e.g. 5000" inputMode="decimal" min="0" max="99999999" />
       </div>
-      <div><label className="block text-sm font-medium text-gray-700">Details</label><input type="text" value={cashDetails} onChange={(e) => setCashDetails(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md" placeholder="e.g. Advance payment" /></div>
+      <div><label className="block text-sm font-medium text-gray-700">Details</label><input type="text" value={cashDetails} onChange={(e) => setCashDetails(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md" placeholder="e.g. Advance payment" maxLength={200} /></div>
     </div>
   );
 
