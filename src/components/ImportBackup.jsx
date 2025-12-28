@@ -242,13 +242,33 @@ export default function ImportBackup({ onCancel }) {
         }
 
         // 4. Process Transactions
+        // Store accessKey on each transaction so the customer portal can safely query by accessKey.
+        const accessKeyByNewCustomerId = new Map();
+        validatedCustomers.forEach((backupCust) => {
+          const newId = idMap.get(backupCust.id);
+          if (newId && typeof backupCust.accessKey === 'string' && backupCust.accessKey.length > 0) {
+            accessKeyByNewCustomerId.set(newId, backupCust.accessKey);
+          }
+        });
+        existingCustomers.forEach((cust) => {
+          if (cust?.id && typeof cust.accessKey === 'string' && cust.accessKey.length > 0) {
+            accessKeyByNewCustomerId.set(cust.id, cust.accessKey);
+          }
+        });
+
         validatedTransactions.forEach((tx) => {
           const newCustomerId = idMap.get(tx.customerId);
-          
+
           if (newCustomerId) {
             const newTxRef = doc(collection(db, 'transactions'));
-            const { id, ...txData } = tx; 
-            batch.set(newTxRef, { ...txData, customerId: newCustomerId });
+            const { id, ...txData } = tx;
+            const customerAccessKey = accessKeyByNewCustomerId.get(newCustomerId);
+
+            batch.set(newTxRef, {
+              ...txData,
+              customerId: newCustomerId,
+              ...(customerAccessKey ? { accessKey: customerAccessKey } : {}),
+            });
           }
         });
 
