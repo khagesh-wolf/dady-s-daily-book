@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage.jsx';
+import { hashPin, verifyPin } from '../utils/pinHash.js';
 
 /**
  * PinScreen is the "View" component.
  * It is defined outside the main component to prevent state-related render bugs.
  */
-function PinScreen({ title, subtitle, pin, setPin, error, onSubmit, onCancel }) {
+function PinScreen({ title, subtitle, pin, setPin, error, onSubmit, onCancel, loading }) {
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col items-center p-8 bg-gray-50 relative">
       
@@ -15,6 +16,7 @@ function PinScreen({ title, subtitle, pin, setPin, error, onSubmit, onCancel }) 
         <button 
           onClick={onCancel} 
           className="absolute top-4 left-4 p-2 text-gray-600"
+          disabled={loading}
         >
           <ArrowLeft className="w-6 h-6" />
         </button>
@@ -38,15 +40,17 @@ function PinScreen({ title, subtitle, pin, setPin, error, onSubmit, onCancel }) 
         maxLength={4}
         pattern="\d*"
         inputMode="numeric"
+        disabled={loading}
       />
       
       {error && <p className="text-red-600 mb-4">{error}</p>} 
       
       <button
         onClick={onSubmit}
-        className="w-full bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700"
+        disabled={loading}
+        className="w-full bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
       >
-        Enter
+        {loading ? 'Verifying...' : 'Enter'}
       </button>
     </div>
   );
@@ -58,49 +62,111 @@ export default function PinLock({ mode, onUnlock, onCancel, title }) {
   const [pin, setPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
-  const savedPin = localStorage.getItem('app_pin');
+  const [savedPinHash, setSavedPinHash] = useState(null);
+  const [isLegacyPin, setIsLegacyPin] = useState(false);
+  
+  // Load saved PIN hash on mount
+  useEffect(() => {
+    const storedHash = localStorage.getItem('app_pin_hash');
+    const legacyPin = localStorage.getItem('app_pin');
+    
+    if (storedHash) {
+      setSavedPinHash(storedHash);
+    } else if (legacyPin) {
+      // Migration: old plain-text PIN exists
+      setIsLegacyPin(true);
+      setSavedPinHash(legacyPin);
+    }
+  }, []);
   
   const [step, setStep] = useState(() => {
     if (mode === 'check') {
       return 'check';
     }
-    if (mode === 'create' && savedPin) {
+    const hasPin = localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin');
+    if (mode === 'create' && hasPin) {
       return 'check_old';
     }
     return 'create_new';
   });
 
   if (step === 'check') {
-    const handleLogin = () => {
-      if (pin === savedPin) {
-        onUnlock(); 
-      } else {
-        setError('Incorrect PIN. Try again.');
+    const handleLogin = async () => {
+      setLoading(true);
+      setError('');
+      
+      try {
+        let isValid = false;
+        
+        if (isLegacyPin) {
+          // Compare with legacy plain-text PIN
+          isValid = pin === savedPinHash;
+          if (isValid) {
+            // Migrate to hashed PIN
+            const newHash = await hashPin(pin);
+            localStorage.setItem('app_pin_hash', newHash);
+            localStorage.removeItem('app_pin');
+          }
+        } else if (savedPinHash) {
+          isValid = await verifyPin(pin, savedPinHash);
+        }
+        
+        if (isValid) {
+          onUnlock();
+        } else {
+          setError('Incorrect PIN. Try again.');
+          setPin('');
+        }
+      } catch (e) {
+        setError('Error verifying PIN. Please try again.');
         setPin('');
+      } finally {
+        setLoading(false);
       }
     };
+    
     return <PinScreen 
              title={title || 'Enter your PIN'} 
              pin={pin} 
              setPin={setPin} 
              error={error} 
              onSubmit={handleLogin} 
-             onCancel={onCancel} 
+             onCancel={onCancel}
+             loading={loading}
            />;
   }
 
-    if (step === 'check_old') {
-    const handleCheckOld = () => {
-      if (pin === savedPin) {
-        setStep('create_new');
+  if (step === 'check_old') {
+    const handleCheckOld = async () => {
+      setLoading(true);
+      setError('');
+      
+      try {
+        let isValid = false;
+        
+        if (isLegacyPin) {
+          isValid = pin === savedPinHash;
+        } else if (savedPinHash) {
+          isValid = await verifyPin(pin, savedPinHash);
+        }
+        
+        if (isValid) {
+          setStep('create_new');
+          setPin('');
+        } else {
+          setError('Incorrect Old PIN. Try again.');
+          setPin('');
+        }
+      } catch (e) {
+        setError('Error verifying PIN. Please try again.');
         setPin('');
-        setError('');
-      } else {
-        setError('Incorrect Old PIN. Try again.');
-        setPin('');
+      } finally {
+        setLoading(false);
       }
     };
+    
     return <PinScreen 
              title={t('set_change_pin')} 
              subtitle="Enter Old PIN" 
@@ -108,13 +174,19 @@ export default function PinLock({ mode, onUnlock, onCancel, title }) {
              setPin={setPin} 
              error={error} 
              onSubmit={handleCheckOld} 
-             onCancel={onCancel} 
+             onCancel={onCancel}
+             loading={loading}
            />;
   }
+  
   if (step === 'create_new') {
     const handleCreate = () => {
       if (pin.length < 4) {
         setError('New PIN must be at least 4 digits.');
+        return;
+      }
+      if (!/^\d+$/.test(pin)) {
+        setError('PIN must contain only numbers.');
         return;
       }
       setNewPin(pin);
@@ -122,37 +194,48 @@ export default function PinLock({ mode, onUnlock, onCancel, title }) {
       setPin('');
       setError('');
     };
-    const createTitle = (savedPin ? 'Enter New PIN' : 'Create a 4-digit PIN');
+    const createTitle = (savedPinHash ? 'Enter New PIN' : 'Create a 4-digit PIN');
     return <PinScreen 
              title={createTitle} 
              pin={pin} 
              setPin={setPin} 
              error={error} 
              onSubmit={handleCreate} 
-             onCancel={onCancel} 
+             onCancel={onCancel}
+             loading={loading}
            />;
   }
   
-  // Step 2c: Confirm new PIN
+  // Step: Confirm new PIN
   if (step === 'confirm_new') {
-    // --- THIS IS THE FIXED LINE ---
-    const handleConfirm = () => { 
+    const handleConfirm = async () => {
       if (pin === newPin) {
-        localStorage.setItem('app_pin', pin);
-        onUnlock();
+        setLoading(true);
+        try {
+          const pinHash = await hashPin(pin);
+          localStorage.setItem('app_pin_hash', pinHash);
+          localStorage.removeItem('app_pin'); // Remove legacy plain-text PIN
+          onUnlock();
+        } catch (e) {
+          setError('Error saving PIN. Please try again.');
+        } finally {
+          setLoading(false);
+        }
       } else {
         setError('PINs do not match. Try again.');
         setPin('');
         setStep('create_new');
       }
     };
+    
     return <PinScreen 
              title={'Confirm New PIN'} 
              pin={pin} 
              setPin={setPin} 
              error={error} 
              onSubmit={handleConfirm} 
-             onCancel={onCancel} 
+             onCancel={onCancel}
+             loading={loading}
            />;
   }
 }

@@ -169,7 +169,8 @@ export default function App() {
 
 
   if (!isUnlocked) {
-    return <PinLock mode={localStorage.getItem('app_pin') ? 'check' : 'create'} onUnlock={handleUnlock} />;
+    const hasPin = localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin');
+    return <PinLock mode={hasPin ? 'check' : 'create'} onUnlock={handleUnlock} />;
   }
 
   // --- Data Helpers ---
@@ -247,7 +248,8 @@ export default function App() {
       });
     }
   } catch (e) {
-    console.error("Error saving customer: ", e);
+    if (import.meta.env.DEV) console.error("Error saving customer: ", e);
+    alert("Error saving customer. Please try again.");
   }
 };
   const handleSaveTransaction = async (txData) => {
@@ -264,7 +266,8 @@ export default function App() {
         });
       }
     } catch (e) {
-      console.error("Error saving transaction: ", e);
+      if (import.meta.env.DEV) console.error("Error saving transaction: ", e);
+      alert("Error saving transaction. Please try again.");
     }
   };
   
@@ -283,8 +286,8 @@ export default function App() {
         });
       }
     } catch (e) {
-      console.error("Error saving expense: ", e);
-      alert("Error saving expense.");
+      if (import.meta.env.DEV) console.error("Error saving expense: ", e);
+      alert("Error saving expense. Please try again.");
     }
   };
 
@@ -299,7 +302,7 @@ export default function App() {
       batch.delete(customerRef);
       await batch.commit();
     } catch (e) {
-      console.error("Error permanently deleting customer: ", e);
+      if (import.meta.env.DEV) console.error("Error permanently deleting customer: ", e);
     }
   };
   const cleanupOldDeletes = (deletedList) => {
@@ -332,8 +335,8 @@ export default function App() {
       setLoading(false);
       handleGoBack();
     } catch (e) {
-      console.error("Error moving customer to trash: ", e);
-      alert("Error moving customer to trash.");
+      if (import.meta.env.DEV) console.error("Error moving customer to trash: ", e);
+      alert("Error moving customer to trash. Please try again.");
       setLoading(false);
     }
   };
@@ -351,8 +354,8 @@ export default function App() {
       await batch.commit();
       setLoading(false);
     } catch (e) {
-      console.error("Error restoring customer: ", e);
-      alert("Error restoring customer.");
+      if (import.meta.env.DEV) console.error("Error restoring customer: ", e);
+      alert("Error restoring customer. Please try again.");
       setLoading(false);
     }
   };
@@ -361,8 +364,8 @@ export default function App() {
     try {
       await deleteDoc(doc(db, 'expenses', expId));
     } catch (e) {
-      console.error("Error deleting expense: ", e);
-      alert("Error deleting expense.");
+      if (import.meta.env.DEV) console.error("Error deleting expense: ", e);
+      alert("Error deleting expense. Please try again.");
     }
   };
   const handleDeleteTransaction = async (txId) => {
@@ -371,8 +374,8 @@ export default function App() {
       await deleteDoc(doc(db, 'transactions', txId));
       handleGoBack();
     } catch (e) {
-      console.error("Error deleting transaction: ", e);
-      alert("Error deleting transaction.");
+      if (import.meta.env.DEV) console.error("Error deleting transaction: ", e);
+      alert("Error deleting transaction. Please try again.");
     }
   };
 
@@ -385,7 +388,8 @@ export default function App() {
     return <LoginScreen />;
   }
   if (!isUnlocked) {
-    return <PinLock mode={localStorage.getItem('app_pin') ? 'check' : 'create'} onUnlock={handleUnlock} />;
+    const hasPin = localStorage.getItem('app_pin_hash') || localStorage.getItem('app_pin');
+    return <PinLock mode={hasPin ? 'check' : 'create'} onUnlock={handleUnlock} />;
   }
 
   // --- RENDER LOGIC (THE "ROUTER") ---
