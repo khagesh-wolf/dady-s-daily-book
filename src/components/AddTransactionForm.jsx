@@ -18,7 +18,7 @@ const calculateWeight = (weightString) => {
     }, 0);
     return sum;
   } catch (e) {
-    console.error("Error parsing weight string:", e);
+    if (import.meta.env.DEV) console.error("Error parsing weight string:", e);
     return 0;
   }
 };
@@ -170,7 +170,7 @@ useEffect(() => {
       const base64String = await resizeAndEncode(file);
       setBillPhotoBase64(base64String);
       setIsUploading(false);
-    } catch (error) { console.error("Error resizing image: ", error); alert("Error processing image."); setIsUploading(false); }
+    } catch (error) { if (import.meta.env.DEV) console.error("Error resizing image: ", error); alert("Error processing image."); setIsUploading(false); }
   };
   const formatCurrency = (amount) => new Intl.NumberFormat('en-IN').format(amount.toFixed(1));
   

@@ -13,9 +13,24 @@ export default function ImportBackup({ onCancel }) {
     }
   };
 
+  // Maximum file size: 10MB
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  
+  // Allowed enum values for validation
+  const ALLOWED_MAIN_TYPES = ['crops', 'tractor', 'cash'];
+  const ALLOWED_CROP_TYPES = ['Wheat(गहुँ)', 'Rice(धान)', 'Maize(मकै)', 'Rice(चामल)', 'Gas(ग्यास)'];
+  const ALLOWED_TX_TYPES = ['crop_buy', 'crop_sell', 'cash_given', 'cash_taken', 'Rotavator', 'Threser', 'Dhunga Trolley', 'Gitti trolley', 'Daura'];
+  const ALLOWED_EXPENSE_TYPES = ['Diesel', 'Vehicle Repair', 'Staff Payment', 'Shop Rent', 'Electricity', 'Other'];
+
   const handleImport = async () => {
     if (!file) {
       alert('Please select a backup file first.');
+      return;
+    }
+    
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      alert('File is too large. Maximum allowed size is 10MB.');
       return;
     }
 
@@ -48,42 +63,80 @@ export default function ImportBackup({ onCancel }) {
           return;
         }
         
-        // Validate and sanitize customer data
+        // Validate and sanitize customer data with strict field whitelisting
         const validateCustomer = (cust) => {
-          if (!cust || typeof cust !== 'object') return null;
+          if (!cust || typeof cust !== 'object' || Array.isArray(cust)) return null;
           const name = typeof cust.name === 'string' ? cust.name.trim().slice(0, 100) : '';
           if (!name) return null;
+          
+          // Whitelist only allowed fields
           return {
-            ...cust,
+            id: typeof cust.id === 'string' ? cust.id.slice(0, 50) : undefined,
             name,
-            phone: typeof cust.phone === 'string' ? cust.phone.trim().slice(0, 20) : '',
+            phone: typeof cust.phone === 'string' ? cust.phone.trim().slice(0, 20).replace(/[^0-9+\-\s()]/g, '') : '',
             address: typeof cust.address === 'string' ? cust.address.trim().slice(0, 200) : '',
+            accessKey: typeof cust.accessKey === 'string' ? cust.accessKey.slice(0, 50) : undefined,
+            isDeleted: cust.isDeleted === true,
+            createdAt: cust.createdAt || null,
+            deletedAt: cust.deletedAt || null,
           };
         };
         
-        // Validate and sanitize transaction data
+        // Validate and sanitize transaction data with enum validation
         const validateTransaction = (tx) => {
-          if (!tx || typeof tx !== 'object') return null;
-          if (!tx.customerId) return null;
+          if (!tx || typeof tx !== 'object' || Array.isArray(tx)) return null;
+          if (!tx.customerId || typeof tx.customerId !== 'string') return null;
+          
+          // Validate enums
+          const mainType = ALLOWED_MAIN_TYPES.includes(tx.mainType) ? tx.mainType : null;
+          const type = ALLOWED_TX_TYPES.includes(tx.type) ? tx.type : null;
+          const cropType = tx.cropType && ALLOWED_CROP_TYPES.includes(tx.cropType) ? tx.cropType : null;
+          
+          if (!mainType) return null;
+          
+          // Whitelist only allowed fields
           return {
-            ...tx,
-            totalAmount: typeof tx.totalAmount === 'number' ? Math.min(tx.totalAmount, 99999999) : 0,
-            amountPaid: typeof tx.amountPaid === 'number' ? Math.min(tx.amountPaid, 99999999) : 0,
-            dueAmount: typeof tx.dueAmount === 'number' ? tx.dueAmount : 0,
+            id: typeof tx.id === 'string' ? tx.id.slice(0, 50) : undefined,
+            customerId: tx.customerId.slice(0, 50),
+            mainType,
+            type,
+            cropType,
+            date: typeof tx.date === 'string' ? tx.date.slice(0, 20) : null,
+            totalAmount: typeof tx.totalAmount === 'number' ? Math.min(Math.max(tx.totalAmount, -99999999), 99999999) : 0,
+            amountPaid: typeof tx.amountPaid === 'number' ? Math.min(Math.max(tx.amountPaid, 0), 99999999) : 0,
+            dueAmount: typeof tx.dueAmount === 'number' ? Math.min(Math.max(tx.dueAmount, -99999999), 99999999) : 0,
             details: typeof tx.details === 'string' ? tx.details.slice(0, 200) : '',
+            weight: typeof tx.weight === 'number' ? Math.min(Math.max(tx.weight, 0), 9999999) : null,
+            weightInput: typeof tx.weightInput === 'string' ? tx.weightInput.slice(0, 100) : null,
+            rate: typeof tx.rate === 'string' || typeof tx.rate === 'number' ? String(tx.rate).slice(0, 20) : null,
+            hours: typeof tx.hours === 'string' || typeof tx.hours === 'number' ? String(tx.hours).slice(0, 10) : null,
+            minutes: typeof tx.minutes === 'string' || typeof tx.minutes === 'number' ? String(tx.minutes).slice(0, 10) : null,
+            numTrolleys: typeof tx.numTrolleys === 'string' || typeof tx.numTrolleys === 'number' ? String(tx.numTrolleys).slice(0, 10) : null,
+            billPhotoBase64: typeof tx.billPhotoBase64 === 'string' ? tx.billPhotoBase64.slice(0, 500000) : null,
+            isDeleted: tx.isDeleted === true,
+            createdAt: tx.createdAt || null,
+            deletedAt: tx.deletedAt || null,
           };
         };
         
-        // Validate and sanitize expense data
+        // Validate and sanitize expense data with enum validation
         const validateExpense = (exp) => {
-          if (!exp || typeof exp !== 'object') return null;
-          const amount = typeof exp.amount === 'number' ? Math.min(exp.amount, 99999999) : 0;
+          if (!exp || typeof exp !== 'object' || Array.isArray(exp)) return null;
+          const amount = typeof exp.amount === 'number' ? Math.min(Math.max(exp.amount, 0), 99999999) : 0;
           if (amount <= 0) return null;
+          
+          // Validate expense type enum
+          const type = ALLOWED_EXPENSE_TYPES.includes(exp.type) ? exp.type : 'Other';
+          
+          // Whitelist only allowed fields
           return {
-            ...exp,
+            id: typeof exp.id === 'string' ? exp.id.slice(0, 50) : undefined,
             amount,
-            type: typeof exp.type === 'string' ? exp.type.slice(0, 50) : 'Other',
+            type,
             details: typeof exp.details === 'string' ? exp.details.slice(0, 200) : '',
+            date: typeof exp.date === 'string' ? exp.date.slice(0, 20) : null,
+            isDeleted: exp.isDeleted === true,
+            createdAt: exp.createdAt || null,
           };
         };
         
@@ -173,7 +226,7 @@ export default function ImportBackup({ onCancel }) {
         onCancel();
 
       } catch (error) {
-        console.error("Error importing data: ", error);
+        if (import.meta.env.DEV) console.error("Error importing data: ", error);
         alert('Error importing data. The file may be corrupt or invalid.');
         setLoading(false);
       }

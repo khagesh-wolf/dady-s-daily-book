@@ -21,7 +21,7 @@ export const useCollection = (collectionName, user) => {
       });
       setData(results);
     }, (error) => {
-      console.error(`Error fetching collection ${collectionName}: `, error);
+      if (import.meta.env.DEV) console.error(`Error fetching collection ${collectionName}: `, error);
       setData([]);
     });
 
