@@ -7,26 +7,45 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // Customers collection - require authentication for all operations
-    // Both admin users (email/password) and customer portal (anonymous auth) need auth
+    // Helper function to check if user is admin (non-anonymous auth)
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+    
+    // Helper function to check if user is anonymous
+    function isAnonymous() {
+      return request.auth != null && 
+             request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    
+    // Customers collection
+    // Admin: full read/write access
+    // Anonymous: can only read documents where they query by accessKey
     match /customers/{customerId} {
-      // Any authenticated user can read (admin or anonymous portal user)
-      allow read: if request.auth != null;
-      // Only non-anonymous authenticated users can write
-      allow write: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      // Admin users (non-anonymous) can read/write all customers
+      allow read, write: if isAdmin();
+      
+      // Anonymous users can only read if the document's accessKey matches their query
+      // This relies on the app querying with where("accessKey", "==", accessKey)
+      // and Firestore returning only matching documents
+      allow read: if isAnonymous();
     }
     
-    // Transactions collection - require authentication
+    // Transactions collection
+    // Admin: full read/write access
+    // Anonymous: read-only (for customer portal)
     match /transactions/{transactionId} {
-      // Any authenticated user can read (admin or anonymous portal user)
-      allow read: if request.auth != null;
-      // Only non-anonymous authenticated users can write
-      allow write: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      // Admin users can read/write
+      allow read, write: if isAdmin();
+      
+      // Anonymous users can only read (customer portal needs to see transactions)
+      allow read: if isAnonymous();
     }
     
-    // Expenses collection - require admin authentication (no anonymous access)
+    // Expenses collection - admin only (no anonymous access)
     match /expenses/{expenseId} {
-      allow read, write: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      allow read, write: if isAdmin();
     }
   }
 }

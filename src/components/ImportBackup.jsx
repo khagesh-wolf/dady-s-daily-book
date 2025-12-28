@@ -42,13 +42,22 @@ export default function ImportBackup({ onCancel }) {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
+      let backupData;
+      
+      // Safely parse JSON with explicit error handling
       try {
         const json = e.target.result;
-        const backupData = JSON.parse(json);
-
+        backupData = JSON.parse(json);
+      } catch (parseError) {
+        alert('Invalid JSON file. The file appears to be corrupted or is not a valid backup file.');
+        setLoading(false);
+        return;
+      }
+      
+      try {
         // Validate backup data structure
-        if (typeof backupData !== 'object' || backupData === null) {
-          alert('Invalid backup file format.');
+        if (typeof backupData !== 'object' || backupData === null || Array.isArray(backupData)) {
+          alert('Invalid backup file format. Expected a JSON object with customers, transactions, and expenses.');
           setLoading(false);
           return;
         }
