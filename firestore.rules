@@ -21,28 +21,39 @@ service cloud.firestore {
     
     // Customers collection
     // Admin: full read/write access
-    // Anonymous: can only read documents where they query by accessKey
+    // Customer portal (anonymous): only allow tightly scoped query by accessKey
     match /customers/{customerId} {
       // Admin users (non-anonymous) can read/write all customers
       allow read, write: if isAdmin();
-      
-      // Anonymous users can only read if the document's accessKey matches their query
-      // This relies on the app querying with where("accessKey", "==", accessKey)
-      // and Firestore returning only matching documents
-      allow read: if isAnonymous();
+
+      // Anonymous users may only LIST with an equality filter on accessKey and a tight limit.
+      // This prevents enumerating the entire collection.
+      allow list: if isAnonymous()
+        && request.query.limit != null
+        && request.query.limit <= 1
+        && request.query.where('accessKey', '==', resource.data.accessKey);
+
+      // Prevent direct reads by document ID for anonymous users.
+      allow get: if false;
     }
-    
+
     // Transactions collection
     // Admin: full read/write access
-    // Anonymous: read-only (for customer portal)
+    // Customer portal (anonymous): only allow scoped queries by accessKey
     match /transactions/{transactionId} {
       // Admin users can read/write
       allow read, write: if isAdmin();
-      
-      // Anonymous users can only read (customer portal needs to see transactions)
-      allow read: if isAnonymous();
+
+      // Anonymous users may only LIST with an equality filter on accessKey and a reasonable limit.
+      allow list: if isAnonymous()
+        && request.query.limit != null
+        && request.query.limit <= 5000
+        && request.query.where('accessKey', '==', resource.data.accessKey);
+
+      // Prevent direct reads by document ID for anonymous users.
+      allow get: if false;
     }
-    
+
     // Expenses collection - admin only (no anonymous access)
     match /expenses/{expenseId} {
       allow read, write: if isAdmin();

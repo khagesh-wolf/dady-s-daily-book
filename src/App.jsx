@@ -253,16 +253,30 @@ export default function App() {
   }
 };
   const handleSaveTransaction = async (txData) => {
-    handleGoBack();
     const { id, ...data } = txData;
+
+    // Ensure customer-portal reads can be safely scoped by accessKey.
+    const cust = allCustomers.find((c) => c.id === data.customerId);
+    if (!cust?.accessKey) {
+      alert('Cannot save transaction: this customer is missing an access key. Please edit the customer and save again to generate one.');
+      return;
+    }
+
+    handleGoBack();
+
+    const dataWithAccessKey = {
+      ...data,
+      accessKey: cust.accessKey,
+    };
+
     try {
       if (id) {
         const docRef = doc(db, 'transactions', id);
-        await updateDoc(docRef, data);
+        await updateDoc(docRef, dataWithAccessKey);
       } else {
-        await addDoc(collection(db, 'transactions'), { 
-          ...data, 
-          createdAt: new Date() 
+        await addDoc(collection(db, 'transactions'), {
+          ...dataWithAccessKey,
+          createdAt: new Date(),
         });
       }
     } catch (e) {

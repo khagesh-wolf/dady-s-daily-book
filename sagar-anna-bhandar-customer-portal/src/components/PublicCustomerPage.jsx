@@ -132,10 +132,11 @@ export default function PublicCustomerPage() {
         const customerData = { id: customerDoc.id, ...customerDoc.data() };
         setCustomer(customerData);
 
-        // Use client-side filtering for transactions
+        // Only fetch transactions scoped to this accessKey (enforced again in Firestore rules)
         const allTransactionsQuery = query(
           collection(db, "transactions"),
-          where("customerId", "==", customerData.id)
+          where("accessKey", "==", accessKey),
+          limit(5000)
         );
 
         const allTransactionsSnapshot = await getDocs(allTransactionsQuery);
