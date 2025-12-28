@@ -48,6 +48,17 @@ export default function ImportBackup({ onCancel }) {
       try {
         const json = e.target.result;
         backupData = JSON.parse(json);
+        
+        // Prototype pollution protection
+        if (backupData && (
+          Object.prototype.hasOwnProperty.call(backupData, '__proto__') ||
+          Object.prototype.hasOwnProperty.call(backupData, 'constructor') ||
+          Object.prototype.hasOwnProperty.call(backupData, 'prototype')
+        )) {
+          alert('Invalid backup file: contains potentially malicious data.');
+          setLoading(false);
+          return;
+        }
       } catch (parseError) {
         alert('Invalid JSON file. The file appears to be corrupted or is not a valid backup file.');
         setLoading(false);
@@ -65,6 +76,27 @@ export default function ImportBackup({ onCancel }) {
         const backupCustomers = Array.isArray(backupData.customers) ? backupData.customers : [];
         const backupTransactions = Array.isArray(backupData.transactions) ? backupData.transactions : [];
         const backupExpenses = Array.isArray(backupData.expenses) ? backupData.expenses : [];
+
+        // Collection size limits to prevent memory exhaustion
+        const MAX_CUSTOMERS = 10000;
+        const MAX_TRANSACTIONS = 50000;
+        const MAX_EXPENSES = 10000;
+
+        if (backupCustomers.length > MAX_CUSTOMERS) {
+          alert(`Too many customers in backup file (max: ${MAX_CUSTOMERS}).`);
+          setLoading(false);
+          return;
+        }
+        if (backupTransactions.length > MAX_TRANSACTIONS) {
+          alert(`Too many transactions in backup file (max: ${MAX_TRANSACTIONS}).`);
+          setLoading(false);
+          return;
+        }
+        if (backupExpenses.length > MAX_EXPENSES) {
+          alert(`Too many expenses in backup file (max: ${MAX_EXPENSES}).`);
+          setLoading(false);
+          return;
+        }
 
         if (backupCustomers.length === 0 && backupTransactions.length === 0 && backupExpenses.length === 0) {
           alert('The selected file does not contain any valid data.');
