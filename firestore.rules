@@ -7,30 +7,26 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // Customers collection - require authentication for admin operations
-    // Public read allowed when querying by accessKey (for customer portal QR codes)
+    // Customers collection - require authentication for all operations
+    // Both admin users (email/password) and customer portal (anonymous auth) need auth
     match /customers/{customerId} {
-      // Authenticated admin users can read/write all customers
-      allow read, write: if request.auth != null;
-      
-      // Public read access for customer portal - requires accessKey in where() clause
-      // This works because Firestore validates the query field matches the resource field
-      // The customer portal queries: where("accessKey", "==", accessKey)
-      // Only documents where accessKey matches the query will be returned
-      allow read: if true;
+      // Any authenticated user can read (admin or anonymous portal user)
+      allow read: if request.auth != null;
+      // Only non-anonymous authenticated users can write
+      allow write: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
     
-    // Transactions collection - require authentication for admin write
-    // Public read for customers querying their own transactions via customerId
+    // Transactions collection - require authentication
     match /transactions/{transactionId} {
-      allow write: if request.auth != null;
-      // Admin read with auth, or public read (for customer portal)
-      allow read: if request.auth != null || true;
+      // Any authenticated user can read (admin or anonymous portal user)
+      allow read: if request.auth != null;
+      // Only non-anonymous authenticated users can write
+      allow write: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
     
-    // Expenses collection - require authentication (admin only)
+    // Expenses collection - require admin authentication (no anonymous access)
     match /expenses/{expenseId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
   }
 }
