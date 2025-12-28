@@ -11,17 +11,33 @@ export default function AddExpenseForm({ onSave, onCancel, initialData }) {
   const [details, setDetails] = useState(initialData?.details || '');
 
   const handleSubmit = () => {
+    const trimmedDetails = details.trim();
+    const parsedAmount = parseFloat(amount);
+    
+    // Input validation
     if (!amount || !type) {
       alert('Please fill in the Amount and Type.');
       return;
     }
-    // --- MODIFIED: Pass ID back ---
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      alert('Please enter a valid positive amount.');
+      return;
+    }
+    if (parsedAmount > 99999999) {
+      alert('Amount is too large. Please enter a reasonable value.');
+      return;
+    }
+    if (trimmedDetails && trimmedDetails.length > 200) {
+      alert('Details must be less than 200 characters.');
+      return;
+    }
+    
     onSave({
       id: initialData?.id,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       type,
-      details,
-      date: initialData?.date || new Date().toISOString().split('T')[0] // Keep old date if editing
+      details: trimmedDetails,
+      date: initialData?.date || new Date().toISOString().split('T')[0]
     });
   };
 
@@ -49,11 +65,11 @@ export default function AddExpenseForm({ onSave, onCancel, initialData }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Amount (Rs.)</label>
-          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="e.g. 5000" inputMode="decimal"/>
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="e.g. 5000" inputMode="decimal" min="0" max="99999999"/>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Details (Optional)</label>
-          <input type="text" value={details} onChange={(e) => setDetails(e.targe.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="e.g. Diesel for 3 days" />
+          <input type="text" value={details} onChange={(e) => setDetails(e.target.value)} className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="e.g. Diesel for 3 days" maxLength={200} />
         </div>
       </div>
 

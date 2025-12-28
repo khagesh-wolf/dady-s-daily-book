@@ -31,15 +31,65 @@ export default function ImportBackup({ onCancel }) {
         const json = e.target.result;
         const backupData = JSON.parse(json);
 
-        const backupCustomers = backupData.customers || [];
-        const backupTransactions = backupData.transactions || [];
-        const backupExpenses = backupData.expenses || [];
+        // Validate backup data structure
+        if (typeof backupData !== 'object' || backupData === null) {
+          alert('Invalid backup file format.');
+          setLoading(false);
+          return;
+        }
+
+        const backupCustomers = Array.isArray(backupData.customers) ? backupData.customers : [];
+        const backupTransactions = Array.isArray(backupData.transactions) ? backupData.transactions : [];
+        const backupExpenses = Array.isArray(backupData.expenses) ? backupData.expenses : [];
 
         if (backupCustomers.length === 0 && backupTransactions.length === 0 && backupExpenses.length === 0) {
           alert('The selected file does not contain any valid data.');
           setLoading(false);
           return;
         }
+        
+        // Validate and sanitize customer data
+        const validateCustomer = (cust) => {
+          if (!cust || typeof cust !== 'object') return null;
+          const name = typeof cust.name === 'string' ? cust.name.trim().slice(0, 100) : '';
+          if (!name) return null;
+          return {
+            ...cust,
+            name,
+            phone: typeof cust.phone === 'string' ? cust.phone.trim().slice(0, 20) : '',
+            address: typeof cust.address === 'string' ? cust.address.trim().slice(0, 200) : '',
+          };
+        };
+        
+        // Validate and sanitize transaction data
+        const validateTransaction = (tx) => {
+          if (!tx || typeof tx !== 'object') return null;
+          if (!tx.customerId) return null;
+          return {
+            ...tx,
+            totalAmount: typeof tx.totalAmount === 'number' ? Math.min(tx.totalAmount, 99999999) : 0,
+            amountPaid: typeof tx.amountPaid === 'number' ? Math.min(tx.amountPaid, 99999999) : 0,
+            dueAmount: typeof tx.dueAmount === 'number' ? tx.dueAmount : 0,
+            details: typeof tx.details === 'string' ? tx.details.slice(0, 200) : '',
+          };
+        };
+        
+        // Validate and sanitize expense data
+        const validateExpense = (exp) => {
+          if (!exp || typeof exp !== 'object') return null;
+          const amount = typeof exp.amount === 'number' ? Math.min(exp.amount, 99999999) : 0;
+          if (amount <= 0) return null;
+          return {
+            ...exp,
+            amount,
+            type: typeof exp.type === 'string' ? exp.type.slice(0, 50) : 'Other',
+            details: typeof exp.details === 'string' ? exp.details.slice(0, 200) : '',
+          };
+        };
+        
+        const validatedCustomers = backupCustomers.map(validateCustomer).filter(Boolean);
+        const validatedTransactions = backupTransactions.map(validateTransaction).filter(Boolean);
+        const validatedExpenses = backupExpenses.map(validateExpense).filter(Boolean);
         
         // --- THIS IS THE NEW MERGE LOGIC ---
         
@@ -68,7 +118,7 @@ export default function ImportBackup({ onCancel }) {
         let mergedCustomerCount = 0;
 
         // 3. Process Customers
-        for (const backupCust of backupCustomers) {
+        for (const backupCust of validatedCustomers) {
           let existingId = null;
 
           // Try to find a match by phone (strongest match)
@@ -82,13 +132,10 @@ export default function ImportBackup({ onCancel }) {
 
           if (existingId) {
             // MERGE: This customer already exists.
-            // We'll map their old ID to their existing ID.
             idMap.set(backupCust.id, existingId);
             mergedCustomerCount++;
             
-            // Optional: Update existing customer's data with backup data
             const existingDocRef = doc(db, 'customers', existingId);
-            // We use 'merge: true' to only update fields, not overwrite
             batch.set(existingDocRef, backupCust, { merge: true });
 
           } else {
@@ -101,38 +148,33 @@ export default function ImportBackup({ onCancel }) {
         }
 
         // 4. Process Transactions
-        backupTransactions.forEach((tx) => {
+        validatedTransactions.forEach((tx) => {
           const newCustomerId = idMap.get(tx.customerId);
           
           if (newCustomerId) {
-            // This transaction belongs to a customer we've mapped
-            // We create a new transaction doc and assign it to the new/merged customer
             const newTxRef = doc(collection(db, 'transactions'));
-            // Remove the old 'id' and set the new customerId
             const { id, ...txData } = tx; 
             batch.set(newTxRef, { ...txData, customerId: newCustomerId });
           }
-          // If newCustomerId is not found, we skip this transaction
-          // as it belongs to a customer who wasn't in the backup.
         });
 
-        // 5. Process Expenses (These are simple additions)
-        backupExpenses.forEach((exp) => {
+        // 5. Process Expenses
+        validatedExpenses.forEach((exp) => {
           const newExpRef = doc(collection(db, 'expenses'));
-          const { id, ...expData } = exp; // Remove old ID
+          const { id, ...expData } = exp;
           batch.set(newExpRef, expData);
         });
 
         // 6. Commit all changes
         await batch.commit();
 
-        alert(`Import Successful!\n\n- ${newCustomerCount} new customers added.\n- ${mergedCustomerCount} customers merged.\n- ${backupTransactions.length} transactions imported.\n- ${backupExpenses.length} expenses imported.`);
+        alert(`Import Successful!\n\n- ${newCustomerCount} new customers added.\n- ${mergedCustomerCount} customers merged.\n- ${validatedTransactions.length} transactions imported.\n- ${validatedExpenses.length} expenses imported.`);
         setLoading(false);
-        onCancel(); // Close the modal
+        onCancel();
 
       } catch (error) {
         console.error("Error importing data: ", error);
-        alert('Error importing data. The file may be corrupt. ' + error.message);
+        alert('Error importing data. The file may be corrupt or invalid.');
         setLoading(false);
       }
     };

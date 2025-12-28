@@ -34,12 +34,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Session timeout: 24 hours (reduced from 30 days for security)
+  const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+  
   const [isUnlocked, setIsUnlocked] = useState(() => {
     const lastActive = sessionStorage.getItem('last_active_time');
     if (!lastActive) return false;
     const inactivity = Date.now() - parseInt(lastActive);
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    return inactivity < thirtyDays;
+    return inactivity < SESSION_TIMEOUT_MS;
   });
   
   const { data: allCustomers } = useCollection('customers', user); 
@@ -98,17 +100,17 @@ export default function App() {
     window.addEventListener('keydown', updateLastActive);
     window.addEventListener('touchstart', updateLastActive);
     window.addEventListener('scroll', updateLastActive);
+    // Check session timeout every 5 minutes (instead of every hour)
     const interval = setInterval(() => {
       const lastActive = sessionStorage.getItem('last_active_time');
       if (lastActive) {
         const inactivity = Date.now() - parseInt(lastActive);
-        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-        if (inactivity >= thirtyDays) {
+        if (inactivity >= SESSION_TIMEOUT_MS) {
           setIsUnlocked(false);
           sessionStorage.removeItem('last_active_time');
         }
       }
-    }, 60 * 60 * 1000);
+    }, 5 * 60 * 1000);
     return () => {
       clearInterval(interval);
       window.removeEventListener('mousemove', updateLastActive);
