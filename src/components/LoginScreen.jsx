@@ -4,6 +4,27 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const MAX_JSON_SIZE = 500; // Max bytes for sessionStorage JSON
+
+// Safe JSON parse with size limit and type validation
+const safeParseLockout = (jsonString) => {
+  const defaultValue = { attempts: 0, lockoutUntil: 0 };
+  if (!jsonString || typeof jsonString !== 'string' || jsonString.length > MAX_JSON_SIZE) {
+    return defaultValue;
+  }
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return defaultValue;
+    }
+    return {
+      attempts: typeof parsed.attempts === 'number' ? parsed.attempts : 0,
+      lockoutUntil: typeof parsed.lockoutUntil === 'number' ? parsed.lockoutUntil : 0,
+    };
+  } catch {
+    return defaultValue;
+  }
+};
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -16,14 +37,12 @@ export default function LoginScreen() {
   useEffect(() => {
     const checkLockout = () => {
       const lockoutData = sessionStorage.getItem('login_lockout');
-      if (lockoutData) {
-        const { lockoutUntil } = JSON.parse(lockoutData);
-        if (lockoutUntil && Date.now() < lockoutUntil) {
-          setLockoutRemaining(Math.ceil((lockoutUntil - Date.now()) / 1000));
-        } else {
-          setLockoutRemaining(0);
-          sessionStorage.removeItem('login_lockout');
-        }
+      const { lockoutUntil } = safeParseLockout(lockoutData);
+      if (lockoutUntil && Date.now() < lockoutUntil) {
+        setLockoutRemaining(Math.ceil((lockoutUntil - Date.now()) / 1000));
+      } else {
+        setLockoutRemaining(0);
+        if (lockoutData) sessionStorage.removeItem('login_lockout');
       }
     };
 
@@ -35,40 +54,35 @@ export default function LoginScreen() {
   const handleSignIn = async () => {
     // Check if currently locked out
     const lockoutData = sessionStorage.getItem('login_lockout');
-    if (lockoutData) {
-      const { lockoutUntil } = JSON.parse(lockoutData);
-      if (lockoutUntil && Date.now() < lockoutUntil) {
-        const remainingMinutes = Math.ceil((lockoutUntil - Date.now()) / 60000);
-        setError(`Too many failed attempts. Try again in ${remainingMinutes} minute(s).`);
-        return;
-      }
+    const { lockoutUntil, attempts } = safeParseLockout(lockoutData);
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      const remainingMinutes = Math.ceil((lockoutUntil - Date.now()) / 60000);
+      setError(`Too many failed attempts. Try again in ${remainingMinutes} minute(s).`);
+      return;
     }
 
     setLoading(true);
     setError(null);
-    
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // Clear lockout data on successful login
       sessionStorage.removeItem('login_lockout');
-    } catch (e) {
+    } catch {
       // Track failed attempts
-      const currentData = sessionStorage.getItem('login_lockout');
-      const { attempts = 0 } = currentData ? JSON.parse(currentData) : {};
       const newAttempts = attempts + 1;
 
       if (newAttempts >= MAX_ATTEMPTS) {
-        const lockoutUntil = Date.now() + LOCKOUT_DURATION;
-        sessionStorage.setItem('login_lockout', JSON.stringify({ attempts: newAttempts, lockoutUntil }));
+        const newLockoutUntil = Date.now() + LOCKOUT_DURATION;
+        sessionStorage.setItem('login_lockout', JSON.stringify({ attempts: newAttempts, lockoutUntil: newLockoutUntil }));
         setError('Too many failed attempts. Account locked for 15 minutes.');
       } else {
-        sessionStorage.setItem('login_lockout', JSON.stringify({ attempts: newAttempts }));
+        sessionStorage.setItem('login_lockout', JSON.stringify({ attempts: newAttempts, lockoutUntil: 0 }));
         setError(`Incorrect email or password. ${MAX_ATTEMPTS - newAttempts} attempt(s) remaining.`);
       }
       setLoading(false);
     }
   };
-
   return (
     <div className="h-full w-full max-w-md mx-auto bg-gray-50 flex flex-col items-center justify-center p-8">
       <img 
