@@ -1,22 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
+  // Check lockout status on mount and update countdown
+  useEffect(() => {
+    const checkLockout = () => {
+      const lockoutData = sessionStorage.getItem('login_lockout');
+      if (lockoutData) {
+        const { lockoutUntil } = JSON.parse(lockoutData);
+        if (lockoutUntil && Date.now() < lockoutUntil) {
+          setLockoutRemaining(Math.ceil((lockoutUntil - Date.now()) / 1000));
+        } else {
+          setLockoutRemaining(0);
+          sessionStorage.removeItem('login_lockout');
+        }
+      }
+    };
+
+    checkLockout();
+    const interval = setInterval(checkLockout, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSignIn = async () => {
+    // Check if currently locked out
+    const lockoutData = sessionStorage.getItem('login_lockout');
+    if (lockoutData) {
+      const { lockoutUntil } = JSON.parse(lockoutData);
+      if (lockoutUntil && Date.now() < lockoutUntil) {
+        const remainingMinutes = Math.ceil((lockoutUntil - Date.now()) / 60000);
+        setError(`Too many failed attempts. Try again in ${remainingMinutes} minute(s).`);
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
+    
     try {
-      // Sign in with the email/pass you created in the Firebase console
       await signInWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener in App.jsx will do the rest.
+      // Clear lockout data on successful login
+      sessionStorage.removeItem('login_lockout');
     } catch (e) {
-      setError("Incorrect email or password.");
+      // Track failed attempts
+      const currentData = sessionStorage.getItem('login_lockout');
+      const { attempts = 0 } = currentData ? JSON.parse(currentData) : {};
+      const newAttempts = attempts + 1;
+
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const lockoutUntil = Date.now() + LOCKOUT_DURATION;
+        sessionStorage.setItem('login_lockout', JSON.stringify({ attempts: newAttempts, lockoutUntil }));
+        setError('Too many failed attempts. Account locked for 15 minutes.');
+      } else {
+        sessionStorage.setItem('login_lockout', JSON.stringify({ attempts: newAttempts }));
+        setError(`Incorrect email or password. ${MAX_ATTEMPTS - newAttempts} attempt(s) remaining.`);
+      }
       setLoading(false);
     }
   };
@@ -58,10 +106,10 @@ export default function LoginScreen() {
 
         <button
           onClick={handleSignIn}
-          disabled={loading}
+          disabled={loading || lockoutRemaining > 0}
           className="w-full bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
         >
-          {loading ? 'Logging In...' : 'Log In'}
+          {loading ? 'Logging In...' : lockoutRemaining > 0 ? `Locked (${Math.ceil(lockoutRemaining / 60)}m)` : 'Log In'}
         </button>
       </div>
     </div>
