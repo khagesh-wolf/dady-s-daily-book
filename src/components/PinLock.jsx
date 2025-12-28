@@ -118,7 +118,6 @@ export default function PinLock({ mode, onUnlock, onCancel, title }) {
             localStorage.setItem('app_pin_hash', newHash);
           }
         }
-        }
         
         if (isValid) {
           onUnlock();
