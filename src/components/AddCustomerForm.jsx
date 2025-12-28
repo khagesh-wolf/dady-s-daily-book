@@ -2,14 +2,12 @@ import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage.jsx';
 
-// Function to generate a random access key
+// Function to generate a cryptographically secure random access key
 const generateAccessKey = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 16; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  // Use crypto.getRandomValues for cryptographically secure random generation
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 };
 
 export default function AddCustomerForm({ onSave, onCancel, initialData }) {

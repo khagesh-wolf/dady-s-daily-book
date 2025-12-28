@@ -76,10 +76,7 @@ export default function PublicCustomerPage() {
     const { outcome } = await installPrompt.userChoice;
     
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
       setShowInstallBanner(false);
-    } else {
-      console.log('User dismissed the install prompt');
     }
     
     // Clear the saved prompt since it can't be used again
@@ -160,7 +157,6 @@ export default function PublicCustomerPage() {
         setTransactions(txList);
         
       } catch (err) {
-        console.error('Error fetching data:', err);
         setError('Could not load data. Please try again later.');
       } finally {
         setLoading(false);

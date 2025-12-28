@@ -12,9 +12,9 @@ service cloud.firestore {
       // Authenticated users can read/write
       allow read, write: if request.auth != null;
       
-      // Public read access ONLY when accessKey matches (for customer portal)
-      allow read: if resource.data.accessKey == request.resource.data.accessKey
-                  || resource.data.accessKey != null;
+      // Public read access ONLY when accessKey in query matches the document's accessKey exactly
+      // This requires the client to provide the correct accessKey as a query parameter
+      allow read: if resource.data.accessKey == request.query.accessKey;
     }
     
     // Transactions collection - require authentication
